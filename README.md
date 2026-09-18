@@ -1,26 +1,23 @@
 # Tick
 
-Чеклисты и памятки для macOS в стиле авиационных карточек — чётко, по пунктам,
-ничего не упустишь.
+*[English version below](#tick-english)*
 
-Два типа листов под разные задачи:
+Иногда не нужно ничего автоматизировать — нужно просто не забыть ни одного
+шага. Tick — чеклисты и памятки для macOS в духе авиационных карточек:
+коротко, по пунктам, без лишнего.
 
-- **Чеклист** — пункты с отметками. Для процедур, которые проходишь по шагам
-  и хочешь видеть, что уже сделано.
-- **Памятка** — список тезисов с командами и значениями («ЗАКРЫЛКИ ........ 15»).
-  Для того, что нужно быстро посмотреть или скопировать одним кликом.
+Два типа листов под разные задачи. **Чеклист** — для процедур, где важно
+отмечать пройденное: сборка релиза, бэкап, что угодно повторяющееся.
+**Памятка** — список тезисов с командами и значениями под рукой
+(«ЗАКРЫЛКИ ........ 15»), чтобы не держать в голове и не рыться в истории
+терминала.
 
-Листы группируются по папкам, внутри можно расставлять заголовки разделов.
-
-Приложение живёт в режиме просмотра: компактная карточка держится поверх всех
-окон на любом рабочем столе и таскается за любое место — не мешает и всегда
-под рукой. Клик по пункту копирует его значение или текст, строка на секунду
-подсвечивается «СКОПИРОВАНО». Переключение между листами — по кнопке в шапке,
-с поиском.
-
-Для редактирования — отдельный режим с тремя колонками (папки, списки, лист),
-полностью управляемый с клавиатуры. Полный список горячих клавиш — прямо
-в приложении, встроенным листом «Горячие клавиши Tick».
+Обычно Tick просто висит компактной карточкой поверх всех окон на любом
+рабочем столе — не мешает, но всегда на виду, и таскается за любое место.
+Клик по пункту копирует его значение, и можно работать дальше. Листы
+группируются по папкам, есть поиск. Когда нужно что-то поправить — отдельный
+режим редактирования, полностью с клавиатуры; полный список горячих клавиш —
+прямо в приложении, встроенным листом «Горячие клавиши Tick».
 
 Тема — светлая, тёмная или как в системе.
 
@@ -35,3 +32,41 @@ brew install --cask tick
 
 Обновления — автоматически через [Sparkle](https://sparkle-project.org), либо
 вручную через меню «Проверить обновления…».
+
+---
+
+<a id="tick-english"></a>
+# Tick (English)
+
+*[Русская версия выше](#tick)*
+
+Sometimes you don't need automation — you just need to not miss a step.
+Tick is a checklist and reference-card app for macOS, styled after aviation
+checklists: short, itemized, no clutter.
+
+Two kinds of lists for different jobs. A **checklist** is for procedures
+where you want to mark off what's done — cutting a release, running a backup,
+anything you repeat. A **reference card** is a list of terms with commands
+or values at hand ("FLAPS ........ 15"), so you don't have to keep it in
+your head or dig through shell history.
+
+Tick normally sits as a compact card that floats above every window on any
+desktop — out of the way, always visible, draggable from anywhere. Click any
+item to copy its value and keep moving. Lists are grouped into folders, with
+search. When you need to change something, there's a dedicated editing mode,
+fully keyboard-driven; the full shortcut list lives right inside the app, as
+a built-in "Tick Hotkeys" card.
+
+Theme: light, dark, or match the system.
+
+## Install
+
+```bash
+brew tap white-currant/tap
+brew install --cask tick
+```
+
+Or grab the DMG by hand from the [Releases](https://github.com/white-currant/Tick/releases) page.
+
+Updates happen automatically via [Sparkle](https://sparkle-project.org), or
+manually from the "Check for Updates…" menu.
