@@ -56,39 +56,50 @@ final class Store {
         ensureBuiltIn()
     }
 
+    /// Сразу пишем файл: иначе идентификаторы встроенных листов пересоздавались бы
+    /// на каждом запуске, и «последний открытый лист» терялся бы.
     private func seed() {
-        let work = addFolder(named: "Работа")
-        checklists = [
-            Checklist(
-                title: "Перед публикацией",
-                kind: .checklist,
-                folderID: work.id,
-                items: [
-                    ChecklistItem(text: "Сборка", isSection: true),
-                    ChecklistItem(text: "Тесты", detail: "зелёные"),
-                    ChecklistItem(text: "Версия и changelog", detail: "обновлены"),
-                    ChecklistItem(text: "Проверка", isSection: true),
-                    ChecklistItem(text: "Свежая установка", detail: "запускается"),
-                    ChecklistItem(text: "Скриншоты", detail: "актуальны"),
-                    ChecklistItem(text: "Тег в git", detail: "поставлен"),
-                ]
-            ),
-            Checklist(
-                title: "Терминал",
-                kind: .reference,
-                folderID: work.id,
-                items: [
-                    ChecklistItem(text: "Занятые порты", detail: "lsof -i -P | grep LISTEN"),
-                    ChecklistItem(text: "Размер папок", detail: "du -sh * | sort -h"),
-                    ChecklistItem(text: "Кто держит файл", detail: "lsof +D ."),
-                    ChecklistItem(text: "Убить процесс по имени", detail: "pkill -x Имя"),
-                ]
-            ),
-            Self.hotkeysChecklist(),
-        ]
+        checklists = [Self.guideChecklist(), Self.hotkeysChecklist()]
+        save()
     }
 
     static let hotkeysTitle = "Горячие клавиши Tick"
+    static let guideTitle = "Как пользоваться Tick"
+    static let hotkeysKey = "hotkeys"
+    static let guideKey = "guide"
+
+    /// Лист-инструкция: каждый пункт подписывает элемент, который он показывает.
+    static func guideChecklist() -> Checklist {
+        Checklist(
+            title: guideTitle,
+            kind: .checklist,
+            items: [
+                ChecklistItem(text: "Из чего состоит пункт", isSection: true),
+                ChecklistItem(text: "Название пункта", detail: "Главная строка: что сделать или запомнить."),
+                ChecklistItem(text: "Короткое значение — справа", detail: "вот так"),
+                ChecklistItem(text: "Длинное значение или команда", detail: "Ложится отдельной строкой под названием, как эта. Клик по ней копирует её целиком."),
+                ChecklistItem(text: "Раздел", detail: "Заголовок группы пунктов, как «Из чего состоит пункт» выше. Не отмечается и не нумеруется."),
+                ChecklistItem(text: "Два вида листов", isSection: true),
+                ChecklistItem(text: "Чеклист", detail: "С квадратиками слева: отмечай пройденное. Этот лист — чеклист."),
+                ChecklistItem(text: "Памятка", detail: "Без квадратиков: тезисы и команды под рукой, чтобы скопировать."),
+                ChecklistItem(text: "В просмотре", isSection: true),
+                ChecklistItem(text: "Клик по пункту", detail: "Копирует значение, а если его нет — название."),
+                ChecklistItem(text: "Квадратик слева", detail: "Только в чеклисте: ставит и снимает отметку."),
+                ChecklistItem(text: "Кнопка ☰ в шапке", detail: "Переключает лист. Есть поиск."),
+                ChecklistItem(text: "Карточка", detail: "Держится поверх окон, тащится за любое место."),
+                ChecklistItem(text: "В правке", isSection: true),
+                ChecklistItem(text: "Как войти", detail: "Кнопка ✎ в шапке или ⌘E."),
+                ChecklistItem(text: "Добавить пункт или раздел", detail: "Кнопки «Пункт» и «Раздел» под листом."),
+                ChecklistItem(text: "Папки и листы", detail: "Слева папки, посередине листы. Лист можно перетащить в папку."),
+                ChecklistItem(text: "Клавиши", detail: "Полный список — в листе «Горячие клавиши Tick»."),
+                ChecklistItem(text: "Данные", isSection: true),
+                ChecklistItem(text: "Где хранятся", detail: "Меню «Файл» → «Показать данные в Finder». Папку можно перенести в iCloud Drive или Dropbox."),
+                ChecklistItem(text: "Встроенные листы", detail: "Эта инструкция и «Горячие клавиши Tick» не удаляются."),
+            ],
+            isBuiltIn: true,
+            templateKey: guideKey
+        )
+    }
 
     static func hotkeysChecklist() -> Checklist {
         Checklist(
@@ -113,20 +124,35 @@ final class Store {
                 ChecklistItem(text: "Из текста к значению и обратно", detail: "⇥ / ⇧⇥"),
                 ChecklistItem(text: "Переставить пункт", detail: "тащить за ≡"),
             ],
-            isBuiltIn: true
+            isBuiltIn: true,
+            templateKey: hotkeysKey
         )
     }
 
-    /// Встроенный лист с горячими клавишами должен быть всегда: помечаем
-    /// существующий по названию или добавляем заново.
+    /// Встроенные листы должны быть всегда. Ищем по ключу, затем по старым
+    /// признакам (единственный встроенный без ключа — горячие клавиши, либо
+    /// совпадение по названию), иначе добавляем заново.
     private func ensureBuiltIn() {
-        if checklists.contains(where: \.isBuiltIn) { return }
-        if let index = checklists.firstIndex(where: { $0.title == Self.hotkeysTitle }) {
-            checklists[index].isBuiltIn = true
-        } else {
-            checklists.append(Self.hotkeysChecklist())
+        var changed = false
+        if let index = checklists.firstIndex(where: { $0.isBuiltIn && $0.templateKey == nil }),
+           !checklists.contains(where: { $0.templateKey == Self.hotkeysKey }) {
+            checklists[index].templateKey = Self.hotkeysKey
+            changed = true
         }
-        save()
+        let templates: [(key: String, title: String, make: () -> Checklist)] = [
+            (Self.hotkeysKey, Self.hotkeysTitle, Self.hotkeysChecklist),
+            (Self.guideKey, Self.guideTitle, Self.guideChecklist),
+        ]
+        for template in templates where !checklists.contains(where: { $0.templateKey == template.key }) {
+            if let index = checklists.firstIndex(where: { $0.title == template.title && $0.templateKey == nil }) {
+                checklists[index].isBuiltIn = true
+                checklists[index].templateKey = template.key
+            } else {
+                checklists.append(template.make())
+            }
+            changed = true
+        }
+        if changed { save() }
     }
 
     private func observeChanges() {

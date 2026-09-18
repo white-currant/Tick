@@ -9,6 +9,8 @@ struct ContentView: View {
     @AppStorage("theme") private var themeRaw = AppTheme.system.rawValue
     @State private var folderSelection: FolderSelection? = .all
     @State private var selectedChecklistID: UUID?
+    /// Последний открытый лист: следующий запуск продолжает с него.
+    @AppStorage("lastChecklistID") private var lastChecklistID = ""
     @State private var search = ""
     @State private var showNewFolder = false
     @State private var showPicker = false
@@ -24,6 +26,16 @@ struct ContentView: View {
 
     private var currentFolder: FolderSelection { folderSelection ?? .all }
 
+    /// Первый запуск открывается на инструкции, дальше — на последнем открытом листе.
+    private func initialChecklistID() -> UUID? {
+        if let last = UUID(uuidString: lastChecklistID),
+           store.checklists.contains(where: { $0.id == last }) {
+            return last
+        }
+        return store.checklists.first(where: { $0.templateKey == Store.guideKey })?.id
+            ?? store.checklists.first?.id
+    }
+
     var body: some View {
         Group {
             if mode == .view {
@@ -38,7 +50,10 @@ struct ContentView: View {
         .focusedSceneValue(\.appActions, actions)
         .onAppear {
             bindActions()
-            if selectedChecklistID == nil { selectedChecklistID = store.checklists.first?.id }
+            if selectedChecklistID == nil { selectedChecklistID = initialChecklistID() }
+        }
+        .onChange(of: selectedChecklistID) { _, id in
+            if let id { lastChecklistID = id.uuidString }
         }
         .onChange(of: store.folders) { _, folders in
             if let id = currentFolder.folderID, !folders.contains(where: { $0.id == id }) {

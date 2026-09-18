@@ -64,11 +64,14 @@ struct Checklist: Identifiable, Codable, Hashable {
     var folderID: UUID?
     var items: [ChecklistItem] = []
     var createdAt = Date()
-    /// Встроенный лист приложения (горячие клавиши) — его нельзя удалить.
+    /// Встроенный лист приложения (инструкция, горячие клавиши) — его нельзя удалить.
     var isBuiltIn = false
+    /// Какой именно встроенный лист это: не зависит от названия, которое можно поменять.
+    var templateKey: String?
 
     init(id: UUID = UUID(), title: String = "", kind: ListKind = .checklist, folderID: UUID? = nil,
-         items: [ChecklistItem] = [], createdAt: Date = Date(), isBuiltIn: Bool = false) {
+         items: [ChecklistItem] = [], createdAt: Date = Date(), isBuiltIn: Bool = false,
+         templateKey: String? = nil) {
         self.id = id
         self.title = title
         self.kind = kind
@@ -76,9 +79,10 @@ struct Checklist: Identifiable, Codable, Hashable {
         self.items = items
         self.createdAt = createdAt
         self.isBuiltIn = isBuiltIn
+        self.templateKey = templateKey
     }
 
-    private enum CodingKeys: String, CodingKey { case id, title, kind, folderID, items, createdAt, isBuiltIn }
+    private enum CodingKeys: String, CodingKey { case id, title, kind, folderID, items, createdAt, isBuiltIn, templateKey }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -89,6 +93,7 @@ struct Checklist: Identifiable, Codable, Hashable {
         items = try c.decodeIfPresent([ChecklistItem].self, forKey: .items) ?? []
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
         isBuiltIn = try c.decodeIfPresent(Bool.self, forKey: .isBuiltIn) ?? false
+        templateKey = try c.decodeIfPresent(String.self, forKey: .templateKey)
     }
 
     var displayTitle: String {

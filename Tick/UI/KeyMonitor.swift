@@ -48,3 +48,9 @@ struct RowFramesKey: PreferenceKey {
         value.merge(nextValue(), uniquingKeysWith: { $1 })
     }
 }
+
+/// Хранилище кадров вне `@State`: значение читается только при клике, и запись
+/// в него не должна заново вычислять body на каждый сдвиг строки.
+final class RowFrameStore {
+    var frames: [UUID: CGRect] = [:]
+}

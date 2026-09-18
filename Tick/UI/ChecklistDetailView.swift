@@ -87,7 +87,7 @@ struct ChecklistReadView<Controls: View>: View {
     @Binding var checklist: Checklist
     @ViewBuilder var controls: () -> Controls
 
-    @State private var rowFrames: [UUID: CGRect] = [:]
+    @State private var rowFrames = RowFrameStore()
     @State private var mouseMonitor = KeyMonitor()
     @State private var windowBox = WindowBox()
     @State private var copiedID: UUID?
@@ -164,7 +164,7 @@ struct ChecklistReadView<Controls: View>: View {
             }
         }
         .background(WindowFinder(box: windowBox))
-        .onPreferenceChange(RowFramesKey.self) { rowFrames = $0 }
+        .onPreferenceChange(RowFramesKey.self) { rowFrames.frames = $0 }
         .onAppear {
             mouseMonitor.install(matching: .leftMouseDown) { event in
                 handleMouse(event)
@@ -188,7 +188,7 @@ struct ChecklistReadView<Controls: View>: View {
         // NSHostingView перевёрнут (начало сверху), как и SwiftUI-кадры строк.
         let local = content.convert(event.locationInWindow, from: nil)
         let point = content.isFlipped ? local : CGPoint(x: local.x, y: content.bounds.height - local.y)
-        guard let id = rowFrames.first(where: { $0.value.contains(point) })?.key else { return false }
+        guard let id = rowFrames.frames.first(where: { $0.value.contains(point) })?.key else { return false }
 
         let start = event.locationInWindow
         while true {
