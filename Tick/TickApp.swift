@@ -5,6 +5,9 @@ struct TickApp: App {
     @State private var store = Store()
     @FocusedValue(\.appActions) private var actions
     @AppStorage("theme") private var themeRaw = AppTheme.system.rawValue
+    #if SPARKLE_ENABLED
+    @StateObject private var updater = UpdaterViewModel()
+    #endif
 
     var body: some Scene {
         Window("Tick", id: "main") {
@@ -62,6 +65,14 @@ struct TickApp: App {
                     .keyboardShortcut(.delete, modifiers: .command)
                     .disabled(actions == nil)
             }
+            #if SPARKLE_ENABLED
+            CommandGroup(after: .appInfo) {
+                Button("Проверить обновления…") {
+                    updater.checkForUpdates()
+                }
+                .disabled(!updater.canCheckForUpdates)
+            }
+            #endif
         }
     }
 }

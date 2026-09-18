@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+    <channel>
+        <title>Tick</title>
+        <link>https://raw.githubusercontent.com/white-currant/Tick/main/appcast.xml</link>
+        <description>Обновления Tick</description>
+        <language>ru</language>
+        <!-- Пункты релизов добавляются сюда скриптом Scripts/release.sh -->
+        <item>
+            <title>Версия 1.0</title>
+            <pubDate>Fri, 18 Sep 2026 14:59:14 +0000</pubDate>
+            <sparkle:version>1</sparkle:version>
+            <sparkle:shortVersionString>1.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/white-currant/Tick/releases/download/v1.0/Tick-1.0.zip"
+                length="1679374"
+                type="application/octet-stream"
+                sparkle:edSignature="EhfXIThzBy7Vz7g7YBl/z9CJZmSuWqplVNHvWIDg+tV/37cSVW1JKy+IzDTceLW6JGQC3orLGfSvVqvfgGsiDQ==" />
+        </item>
+    </channel>
+</rss>
