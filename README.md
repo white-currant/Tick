@@ -25,6 +25,7 @@ Theme: light, dark, or match the system.
 
 ```bash
 brew tap white-currant/tap
+brew trust white-currant/tap
 brew install --cask tick
 ```
 
@@ -63,6 +64,7 @@ manually from the "Check for Updates…" menu.
 
 ```bash
 brew tap white-currant/tap
+brew trust white-currant/tap
 brew install --cask tick
 ```
 
