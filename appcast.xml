@@ -7,6 +7,18 @@
         <language>ru</language>
         <!-- Пункты релизов добавляются сюда скриптом Scripts/release.sh -->
         <item>
+            <title>Версия 1.2</title>
+            <pubDate>Sat, 19 Sep 2026 10:14:47 +0000</pubDate>
+            <sparkle:version>3</sparkle:version>
+            <sparkle:shortVersionString>1.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/white-currant/Tick/releases/download/v1.2/Tick-1.2.zip"
+                length="1731434"
+                type="application/octet-stream"
+                sparkle:edSignature="46YmMsL9P0Mr/7Sxjlym4uIwCL9gGyDs9WXesYHpNOlR1FwfzFr2/huFeV4MasjX1c+F4W3d3Bx9Y/RMGth7Bw==" />
+        </item>
+        <item>
             <title>Версия 1.1</title>
             <pubDate>Fri, 18 Sep 2026 23:37:39 +0000</pubDate>
             <sparkle:version>2</sparkle:version>
