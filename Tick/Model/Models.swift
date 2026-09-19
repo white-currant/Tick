@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 
 struct Folder: Identifiable, Codable, Hashable {
     var id = UUID()
@@ -119,16 +120,39 @@ struct Checklist: Identifiable, Codable, Hashable {
     var progress: Double { actionItems.isEmpty ? 0 : Double(doneCount) / Double(actionItems.count) }
     var isComplete: Bool { kind == .checklist && !actionItems.isEmpty && doneCount == actionItems.count }
 
-    /// Порядковый номер пункта без учёта заголовков разделов.
-    func number(of item: ChecklistItem) -> Int? {
-        guard !item.isSection else { return nil }
-        var n = 0
-        for i in items {
-            if i.isSection { continue }
-            n += 1
-            if i.id == item.id { return n }
+    /// Нумерация: разделы 1, 2, 3; пункт — номер раздела и свой (2.1); без разделов — 01, 02.
+    /// Подпункты добавляют ещё один номер (2.1.1); основное значение при них — первое.
+    var numbering: Numbering {
+        var labels: [UUID: String] = [:]
+        let hasSections = items.contains { $0.isSection }
+        var section = 0
+        var count = 0
+        var longest = 2
+        for item in items {
+            if item.isSection {
+                section += 1
+                count = 0
+                labels[item.id] = "\(section)"
+                continue
+            }
+            count += 1
+            let label = !hasSections ? String(format: "%02d", count)
+                : section == 0 ? "\(count)" : "\(section).\(count)"
+            labels[item.id] = label
+            longest = max(longest, label.count)
+            let subs = item.filledSubitems.count
+            if subs > 0 {
+                let last = (item.detail.isEmpty ? 0 : 1) + subs
+                longest = max(longest, label.count + 1 + String(last).count)
+            }
         }
-        return nil
+        return Numbering(labels: labels, width: max(20, CGFloat(longest) * 6.8 + 2))
+    }
+
+    struct Numbering {
+        var labels: [UUID: String]
+        /// Ширина колонки номеров: по самому длинному номеру листа.
+        var width: CGFloat
     }
 
     func matches(_ query: String) -> Bool {

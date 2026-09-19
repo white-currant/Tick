@@ -124,13 +124,15 @@ struct ChecklistReadView<Controls: View>: View {
                             .foregroundStyle(Palette.inkMuted)
                             .padding(20)
                     }
+                    let numbering = checklist.numbering
                     ForEach($checklist.items) { $item in
                         if item.isSection {
-                            SectionRow(text: item.text)
+                            SectionRow(text: item.text, number: numbering.labels[item.id])
                         } else {
                             ReadItemRow(
                                 item: $item,
-                                number: checklist.number(of: item),
+                                label: numbering.labels[item.id],
+                                numberWidth: numbering.width,
                                 kind: checklist.kind,
                                 copied: copiedID == item.id
                             )
@@ -239,14 +241,22 @@ struct ChecklistReadView<Controls: View>: View {
 
 private struct SectionRow: View {
     var text: String
+    var number: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(text.uppercased())
-                .font(Typo.section)
-                .tracking(1.6)
-                .foregroundStyle(Palette.amber)
-                .textSelection(.enabled)
+            HStack(spacing: 8) {
+                if let number {
+                    Text(number)
+                        .font(Typo.section)
+                        .foregroundStyle(Palette.amber)
+                }
+                Text(text.uppercased())
+                    .font(Typo.section)
+                    .tracking(1.6)
+                    .foregroundStyle(Palette.amber)
+                    .textSelection(.enabled)
+            }
             Rectangle().fill(Palette.ink.opacity(0.8)).frame(height: 1.5)
         }
         .padding(.top, 18)
@@ -256,7 +266,8 @@ private struct SectionRow: View {
 
 private struct ReadItemRow: View {
     @Binding var item: ChecklistItem
-    var number: Int?
+    var label: String?
+    var numberWidth: CGFloat
     var kind: ListKind
     var copied: Bool
     @State private var hovering = false
@@ -283,10 +294,10 @@ private struct ReadItemRow: View {
                 // Клик по любому месту пункта копирует значение (или текст, если значения нет).
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
-                        Text(number.map { String(format: "%02d", $0) } ?? "")
+                        Text(label ?? "")
                             .font(Typo.number)
                             .foregroundStyle(Palette.inkMuted)
-                            .frame(width: 20, alignment: .trailing)
+                            .frame(width: numberWidth, alignment: .trailing)
 
                         Text(item.text.isEmpty ? " " : item.text)
                             .font(Typo.item)
@@ -311,16 +322,16 @@ private struct ReadItemRow: View {
 
                     if !detailInline, !item.detail.isEmpty || !item.filledSubitems.isEmpty {
                         let multi = !item.filledSubitems.isEmpty
+                        let first = item.detail.isEmpty ? 1 : 2
                         VStack(alignment: .leading, spacing: 4) {
                             if !item.detail.isEmpty {
-                                chip(item.detail, frameID: multi ? item.id : nil)
+                                valueLine(item.detail, label: multi ? "\(label ?? "").1" : nil, frameID: multi ? item.id : nil)
                             }
-                            ForEach(item.filledSubitems) { sub in
-                                chip(sub.text, frameID: sub.id)
+                            ForEach(Array(item.filledSubitems.enumerated()), id: \.element.id) { index, sub in
+                                valueLine(sub.text, label: "\(label ?? "").\(first + index)", frameID: sub.id)
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.leading, 30)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -365,10 +376,9 @@ private struct ReadItemRow: View {
         return done ? Palette.done.opacity(0.18) : Color.clear
     }
 
-    private var detailChip: some View { chip(item.detail, frameID: nil) }
+    private var detailChip: some View { chip(item.detail) }
 
-    /// `frameID` нужен только пунктам с несколькими значениями: по нему клик находит нужное.
-    private func chip(_ text: String, frameID: UUID?) -> some View {
+    private func chip(_ text: String) -> some View {
         Text(text)
             .font(Typo.code)
             .foregroundStyle(item.isDone ? Palette.inkMuted : Palette.ink)
@@ -377,14 +387,28 @@ private struct ReadItemRow: View {
             .padding(.vertical, 3)
             .background(Palette.code, in: RoundedRectangle(cornerRadius: 4))
             .fixedSize(horizontal: false, vertical: true)
-            .background(
-                GeometryReader { proxy in
-                    Color.clear.preference(
-                        key: ChipFramesKey.self,
-                        value: frameID.map { [$0: proxy.frame(in: .global)] } ?? [:]
-                    )
-                }
-            )
+    }
+
+    /// Строка значения под названием. У пунктов с несколькими значениями у каждой строки
+    /// свой номер и свой кадр: клик по любому месту строки копирует именно это значение.
+    private func valueLine(_ text: String, label: String?, frameID: UUID?) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text(label ?? "")
+                .font(Typo.number)
+                .foregroundStyle(Palette.inkMuted)
+                .frame(width: numberWidth, alignment: .trailing)
+            chip(text)
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: ChipFramesKey.self,
+                    value: frameID.map { [$0: proxy.frame(in: .global)] } ?? [:]
+                )
+            }
+        )
     }
 
     private var copyHint: some View {
@@ -419,10 +443,12 @@ struct ChecklistEditView: View {
                     .padding(.top, 14)
                     .padding(.bottom, 8)
 
+                let numbering = checklist.numbering
                 ForEach($checklist.items) { $item in
                     EditItemRow(
                         item: $item,
-                        number: checklist.number(of: item),
+                        label: numbering.labels[item.id],
+                        numberWidth: numbering.width,
                         kind: checklist.kind,
                         focus: $focus,
                         onReturn: { insertItem(after: item.id) },
@@ -589,7 +615,8 @@ private struct ReorderDelegate: DropDelegate {
 
 private struct EditItemRow: View {
     @Binding var item: ChecklistItem
-    var number: Int?
+    var label: String?
+    var numberWidth: CGFloat
     var kind: ListKind
     @Binding var focus: ChecklistEditView.Field?
     var onReturn: () -> Void
@@ -653,11 +680,20 @@ private struct EditItemRow: View {
                 .help("Перетащите, чтобы переставить")
 
             if item.isSection {
-                Image(systemName: "text.line.first.and.arrowtriangle.forward")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(Palette.amber)
-                    .frame(width: 20)
-                    .padding(.top, 5)
+                if let label {
+                    Text(label)
+                        .font(Typo.number)
+                        .fontWeight(.heavy)
+                        .foregroundStyle(Palette.amber)
+                        .frame(width: numberWidth, alignment: .trailing)
+                        .padding(.top, 5)
+                } else {
+                    Image(systemName: "text.line.first.and.arrowtriangle.forward")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(Palette.amber)
+                        .frame(width: numberWidth)
+                        .padding(.top, 5)
+                }
                 GrowingTextView(
                     text: $item.text,
                     placeholder: "Раздел",
@@ -672,10 +708,10 @@ private struct EditItemRow: View {
                 )
                 .padding(.top, 3)
             } else {
-                Text(number.map { String(format: "%02d", $0) } ?? "")
+                Text(label ?? "")
                     .font(Typo.number)
                     .foregroundStyle(Palette.inkMuted)
-                    .frame(width: 20, alignment: .trailing)
+                    .frame(width: numberWidth, alignment: .trailing)
                     .padding(.top, 4)
 
                 VStack(alignment: .leading, spacing: 2) {
