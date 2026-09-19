@@ -238,7 +238,7 @@ struct ChecklistReadView<Controls: View>: View {
             lit = allChips
         } else {
             text = item.detail.isEmpty ? item.text : item.detail
-            lit = []
+            lit = item.detail.isEmpty ? [] : [item.id]
         }
         copyToPasteboard(text)
         copiedResetTask?.cancel()
@@ -351,10 +351,10 @@ private struct ReadItemRow: View {
                         let first = item.detail.isEmpty ? 1 : 2
                         VStack(alignment: .leading, spacing: 4) {
                             if !item.detail.isEmpty {
-                                valueLine(item.detail, label: multi ? "\(label ?? "").1" : nil, frameID: multi ? item.id : nil)
+                                valueLine(item.detail, label: multi ? "\(label ?? "").1" : nil, key: item.id, frameID: multi ? item.id : nil)
                             }
                             ForEach(Array(item.filledSubitems.enumerated()), id: \.element.id) { index, sub in
-                                valueLine(sub.text, label: "\(label ?? "").\(first + index)", frameID: sub.id)
+                                valueLine(sub.text, label: "\(label ?? "").\(first + index)", key: sub.id, frameID: sub.id)
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -405,7 +405,19 @@ private struct ReadItemRow: View {
         return done ? Palette.done.opacity(0.18) : Color.clear
     }
 
-    private var detailChip: some View { chip(item.detail) }
+    /// Единственное значение в строке через лидер: подсвечивается так же, как подпункт.
+    private var detailChip: some View {
+        chip(item.detail, highlighted: copiedChipIDs.contains(item.id), hovered: hoveredChipID == item.id)
+            .onHover { setHovered(item.id, inside: $0) }
+    }
+
+    private func setHovered(_ key: UUID, inside: Bool) {
+        if inside {
+            hoveredChipID = key
+        } else if hoveredChipID == key {
+            hoveredChipID = nil
+        }
+    }
 
     private func chip(_ text: String, highlighted: Bool = false, hovered: Bool = false) -> some View {
         Text(text)
@@ -423,7 +435,7 @@ private struct ReadItemRow: View {
 
     /// Строка значения под названием. У пунктов с несколькими значениями у каждой строки
     /// свой номер и свой кадр: клик по любому месту строки копирует именно это значение.
-    private func valueLine(_ text: String, label: String?, frameID: UUID?) -> some View {
+    private func valueLine(_ text: String, label: String?, key: UUID, frameID: UUID?) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             Text(label ?? "")
                 .font(Typo.number)
@@ -431,21 +443,14 @@ private struct ReadItemRow: View {
                 .frame(width: numberWidth, alignment: .trailing)
             chip(
                 text,
-                highlighted: frameID.map(copiedChipIDs.contains) ?? false,
-                hovered: frameID != nil && frameID == hoveredChipID
+                highlighted: copiedChipIDs.contains(key),
+                hovered: hoveredChipID == key
             )
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
-        .onHover { inside in
-            guard let frameID else { return }
-            if inside {
-                hoveredChipID = frameID
-            } else if hoveredChipID == frameID {
-                hoveredChipID = nil
-            }
-        }
+        .onHover { setHovered(key, inside: $0) }
         .background(
             GeometryReader { proxy in
                 Color.clear.preference(
