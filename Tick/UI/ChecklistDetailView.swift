@@ -88,6 +88,7 @@ struct ChecklistReadView<Controls: View>: View {
     @ViewBuilder var controls: () -> Controls
 
     @State private var rowFrames = RowFrameStore()
+    @State private var chipFrames = RowFrameStore()
     @State private var mouseMonitor = KeyMonitor()
     @State private var windowBox = WindowBox()
     @State private var copiedID: UUID?
@@ -165,6 +166,7 @@ struct ChecklistReadView<Controls: View>: View {
         }
         .background(WindowFinder(box: windowBox))
         .onPreferenceChange(RowFramesKey.self) { rowFrames.frames = $0 }
+        .onPreferenceChange(ChipFramesKey.self) { chipFrames.frames = $0 }
         .onAppear {
             mouseMonitor.install(matching: .leftMouseDown) { event in
                 handleMouse(event)
@@ -189,6 +191,7 @@ struct ChecklistReadView<Controls: View>: View {
         let local = content.convert(event.locationInWindow, from: nil)
         let point = content.isFlipped ? local : CGPoint(x: local.x, y: content.bounds.height - local.y)
         guard let id = rowFrames.frames.first(where: { $0.value.contains(point) })?.key else { return false }
+        let chipID = chipFrames.frames.first(where: { $0.value.contains(point) })?.key
 
         let start = event.locationInWindow
         while true {
@@ -199,7 +202,7 @@ struct ChecklistReadView<Controls: View>: View {
                 dequeue: true
             ) else { return true } // долгое удержание — не клик
             if next.type == .leftMouseUp {
-                copyRow(id)
+                copyRow(id, chipID: chipID)
                 return true
             }
             let moved = hypot(next.locationInWindow.x - start.x, next.locationInWindow.y - start.y)
@@ -211,9 +214,13 @@ struct ChecklistReadView<Controls: View>: View {
         }
     }
 
-    private func copyRow(_ id: UUID) {
+    /// Клик по значению копирует его; по остальной строке — основное значение или текст.
+    private func copyRow(_ id: UUID, chipID: UUID?) {
         guard let item = checklist.items.first(where: { $0.id == id }) else { return }
-        copyToPasteboard(item.detail.isEmpty ? item.text : item.detail)
+        let picked = chipID.flatMap { chip in
+            chip == item.id ? item.detail : item.subitems.first(where: { $0.id == chip })?.text
+        }
+        copyToPasteboard(picked ?? (item.detail.isEmpty ? item.text : item.detail))
         copiedResetTask?.cancel()
         withAnimation(.easeOut(duration: 0.12)) { copiedID = id }
         copiedResetTask = Task {
@@ -255,7 +262,9 @@ private struct ReadItemRow: View {
     @State private var hovering = false
 
     /// Короткий ответ идёт в строку через лидер, длинная команда — отдельной строкой.
-    private var detailInline: Bool { item.detail.count <= 16 && !item.detail.contains("\n") }
+    private var detailInline: Bool {
+        item.detail.count <= 16 && !item.detail.contains("\n") && item.filledSubitems.isEmpty
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -300,10 +309,18 @@ private struct ReadItemRow: View {
                             .alignmentGuide(.firstTextBaseline) { d in d[.bottom] - 2 }
                     }
 
-                    if !item.detail.isEmpty, !detailInline {
-                        detailChip
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.leading, 30)
+                    if !detailInline, !item.detail.isEmpty || !item.filledSubitems.isEmpty {
+                        let multi = !item.filledSubitems.isEmpty
+                        VStack(alignment: .leading, spacing: 4) {
+                            if !item.detail.isEmpty {
+                                chip(item.detail, frameID: multi ? item.id : nil)
+                            }
+                            ForEach(item.filledSubitems) { sub in
+                                chip(sub.text, frameID: sub.id)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.leading, 30)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -334,6 +351,9 @@ private struct ReadItemRow: View {
                 Button("Копировать значение") { copyToPasteboard(item.detail) }
                 Button("Копировать строку") { copyToPasteboard(item.text + " — " + item.detail) }
             }
+            ForEach(item.filledSubitems) { sub in
+                Button("Копировать: \(sub.text.prefix(40))") { copyToPasteboard(sub.text) }
+            }
         }
     }
 
@@ -345,8 +365,11 @@ private struct ReadItemRow: View {
         return done ? Palette.done.opacity(0.18) : Color.clear
     }
 
-    private var detailChip: some View {
-        Text(item.detail)
+    private var detailChip: some View { chip(item.detail, frameID: nil) }
+
+    /// `frameID` нужен только пунктам с несколькими значениями: по нему клик находит нужное.
+    private func chip(_ text: String, frameID: UUID?) -> some View {
+        Text(text)
             .font(Typo.code)
             .foregroundStyle(item.isDone ? Palette.inkMuted : Palette.ink)
             .textSelection(.enabled)
@@ -354,6 +377,14 @@ private struct ReadItemRow: View {
             .padding(.vertical, 3)
             .background(Palette.code, in: RoundedRectangle(cornerRadius: 4))
             .fixedSize(horizontal: false, vertical: true)
+            .background(
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: ChipFramesKey.self,
+                        value: frameID.map { [$0: proxy.frame(in: .global)] } ?? [:]
+                    )
+                }
+            )
     }
 
     private var copyHint: some View {
@@ -377,6 +408,7 @@ struct ChecklistEditView: View {
         case title
         case item(UUID)
         case detail(UUID)
+        case sub(UUID)
     }
 
     var body: some View {
@@ -494,7 +526,13 @@ struct ChecklistEditView: View {
             return
         }
         let previous = checklist.items[index - 1]
-        focus = previous.isSection ? .item(previous.id) : .detail(previous.id)
+        if previous.isSection {
+            focus = .item(previous.id)
+        } else if let last = previous.subitems.last {
+            focus = .sub(last.id)
+        } else {
+            focus = .detail(previous.id)
+        }
     }
 
     private func addItem(section: Bool = false) {
@@ -562,6 +600,43 @@ private struct EditItemRow: View {
     var onFocusPrevious: () -> Void
 
     @State private var hovering = false
+
+    private func addSub(at index: Int) {
+        let sub = SubItem()
+        item.subitems.insert(sub, at: min(max(index, 0), item.subitems.count))
+        DispatchQueue.main.async { focus = .sub(sub.id) }
+    }
+
+    /// ⇥ в подпункте заводит следующий, но пустой не размножаем.
+    private func addSub(after id: UUID) {
+        guard let index = item.subitems.firstIndex(where: { $0.id == id }),
+              !item.subitems[index].text.isEmpty else { return }
+        addSub(at: index + 1)
+    }
+
+    private func removeSub(_ id: UUID) {
+        guard let index = item.subitems.firstIndex(where: { $0.id == id }) else { return }
+        item.subitems.remove(at: index)
+        focus = index == 0 ? .detail(item.id) : .sub(item.subitems[index - 1].id)
+    }
+
+    private func focusBefore(sub id: UUID) {
+        guard let index = item.subitems.firstIndex(where: { $0.id == id }) else { return }
+        focus = index == 0 ? .detail(item.id) : .sub(item.subitems[index - 1].id)
+    }
+
+    private func focusAfter(sub id: UUID) {
+        guard let index = item.subitems.firstIndex(where: { $0.id == id }) else { return }
+        if index + 1 < item.subitems.count {
+            focus = .sub(item.subitems[index + 1].id)
+        } else {
+            onFocusNext()
+        }
+    }
+
+    private func focusAfterDetail() {
+        if let first = item.subitems.first { focus = .sub(first.id) } else { onFocusNext() }
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
@@ -631,12 +706,47 @@ private struct EditItemRow: View {
                             focus: $focus,
                             onReturn: onReturn,
                             onBackspaceEmpty: { focus = .item(item.id) },
+                            onTab: { addSub(at: 0) },
                             onBacktab: { focus = .item(item.id) },
-                            onArrowDown: onFocusNext,
+                            onArrowDown: { focusAfterDetail() },
                             onArrowUp: { focus = .item(item.id) }
                         )
                     }
+                    ForEach($item.subitems) { $sub in
+                        HStack(alignment: .top, spacing: 6) {
+                            Text("↳")
+                                .font(Typo.code)
+                                .foregroundStyle(Palette.inkMuted.opacity(0.6))
+                                .padding(.top, 2)
+                            GrowingTextView(
+                                text: $sub.text,
+                                placeholder: kind == .checklist ? "ещё ответ или значение" : "ещё команда или значение",
+                                font: .monospacedSystemFont(ofSize: 12.5, weight: .medium),
+                                color: NSColor(Palette.ink),
+                                field: ChecklistEditView.Field.sub(sub.id),
+                                focus: $focus,
+                                onReturn: onReturn,
+                                onBackspaceEmpty: { removeSub(sub.id) },
+                                onTab: { addSub(after: sub.id) },
+                                onBacktab: { focusBefore(sub: sub.id) },
+                                onArrowDown: { focusAfter(sub: sub.id) },
+                                onArrowUp: { focusBefore(sub: sub.id) }
+                            )
+                        }
+                    }
                 }
+            }
+
+            if !item.isSection {
+                Button { addSub(at: item.subitems.count) } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(Palette.inkMuted)
+                }
+                .buttonStyle(.plain)
+                .opacity(hovering ? 1 : 0)
+                .padding(.top, 5)
+                .help("Добавить подпункт (⇥ в поле значения)")
             }
 
             Button(action: onDelete) {
@@ -659,7 +769,10 @@ private struct EditItemRow: View {
         .contextMenu {
             Button(item.isSection ? "Сделать пунктом" : "Сделать заголовком раздела") {
                 item.isSection.toggle()
-                if item.isSection { item.detail = ""; item.isDone = false }
+                if item.isSection { item.detail = ""; item.subitems = []; item.isDone = false }
+            }
+            if !item.isSection {
+                Button("Добавить подпункт") { addSub(at: item.subitems.count) }
             }
             Divider()
             Button("Удалить", role: .destructive, action: onDelete)

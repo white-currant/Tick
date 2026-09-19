@@ -49,6 +49,14 @@ struct RowFramesKey: PreferenceKey {
     }
 }
 
+/// Кадры отдельных значений пункта с подпунктами: клик по значению копирует именно его.
+struct ChipFramesKey: PreferenceKey {
+    static var defaultValue: [UUID: CGRect] = [:]
+    static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { $1 })
+    }
+}
+
 /// Хранилище кадров вне `@State`: значение читается только при клике, и запись
 /// в него не должна заново вычислять body на каждый сдвиг строки.
 final class RowFrameStore {

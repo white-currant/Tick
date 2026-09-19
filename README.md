@@ -14,7 +14,7 @@ your head or dig through shell history.
 
 Tick normally sits as a compact card that floats above every window on any
 desktop — out of the way, always visible, draggable from anywhere. Click any
-item to copy its value and keep moving. Lists are grouped into folders, with
+item to copy its value and keep moving; an item can carry several values. Lists are grouped into folders, with
 search. When you need to change something, there's a dedicated editing mode,
 fully keyboard-driven; the full shortcut list lives right inside the app, as
 a built-in "Tick Hotkeys" card.
@@ -96,7 +96,7 @@ Skip the second line if you want to keep your checklists.
 
 Обычно Tick просто висит компактной карточкой поверх всех окон на любом
 рабочем столе — не мешает, но всегда на виду, и таскается за любое место.
-Клик по пункту копирует его значение, и можно работать дальше. Листы
+Клик по пункту копирует его значение, и можно работать дальше; у пункта может быть несколько значений. Листы
 группируются по папкам, есть поиск. Когда нужно что-то поправить — отдельный
 режим редактирования, полностью с клавиатуры; полный список горячих клавиш —
 прямо в приложении, встроенным листом «Горячие клавиши Tick».

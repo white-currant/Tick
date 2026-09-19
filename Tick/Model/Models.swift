@@ -27,6 +27,12 @@ enum ListKind: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+/// Дополнительное значение пункта: пункт может нести несколько команд или ответов.
+struct SubItem: Identifiable, Codable, Hashable {
+    var id = UUID()
+    var text = ""
+}
+
 struct ChecklistItem: Identifiable, Codable, Hashable {
     var id = UUID()
     /// Что проверить (challenge) или тезис.
@@ -36,16 +42,23 @@ struct ChecklistItem: Identifiable, Codable, Hashable {
     var isDone = false
     /// Заголовок раздела внутри листа — не отмечается, не нумеруется.
     var isSection = false
+    /// Подпункты: ещё значения под тем же названием, после основного `detail`.
+    var subitems: [SubItem] = []
 
-    init(id: UUID = UUID(), text: String = "", detail: String = "", isDone: Bool = false, isSection: Bool = false) {
+    init(id: UUID = UUID(), text: String = "", detail: String = "", isDone: Bool = false,
+         isSection: Bool = false, subitems: [SubItem] = []) {
         self.id = id
         self.text = text
         self.detail = detail
         self.isDone = isDone
         self.isSection = isSection
+        self.subitems = subitems
     }
 
-    private enum CodingKeys: String, CodingKey { case id, text, detail, isDone, isSection }
+    /// Подпункты с текстом: пустые заготовки в правке не показываем и не копируем.
+    var filledSubitems: [SubItem] { subitems.filter { !$0.text.isEmpty } }
+
+    private enum CodingKeys: String, CodingKey { case id, text, detail, isDone, isSection, subitems }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -54,6 +67,7 @@ struct ChecklistItem: Identifiable, Codable, Hashable {
         detail = try c.decodeIfPresent(String.self, forKey: .detail) ?? ""
         isDone = try c.decodeIfPresent(Bool.self, forKey: .isDone) ?? false
         isSection = try c.decodeIfPresent(Bool.self, forKey: .isSection) ?? false
+        subitems = try c.decodeIfPresent([SubItem].self, forKey: .subitems) ?? []
     }
 }
 
@@ -121,7 +135,10 @@ struct Checklist: Identifiable, Codable, Hashable {
         let q = query.trimmingCharacters(in: .whitespaces)
         if q.isEmpty { return true }
         if title.localizedStandardContains(q) { return true }
-        return items.contains { $0.text.localizedStandardContains(q) || $0.detail.localizedStandardContains(q) }
+        return items.contains {
+            $0.text.localizedStandardContains(q) || $0.detail.localizedStandardContains(q)
+                || $0.subitems.contains { $0.text.localizedStandardContains(q) }
+        }
     }
 
     /// Текстовое представление для буфера обмена.
@@ -137,6 +154,7 @@ struct Checklist: Identifiable, Codable, Hashable {
             line += item.text
             if !item.detail.isEmpty { line += " — " + item.detail }
             lines.append(line)
+            for sub in item.filledSubitems { lines.append("    ↳ " + sub.text) }
         }
         return lines.joined(separator: "\n")
     }

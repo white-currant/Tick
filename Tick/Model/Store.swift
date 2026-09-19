@@ -78,6 +78,11 @@ final class Store {
                 ChecklistItem(text: "Название пункта", detail: "Главная строка: что сделать или запомнить."),
                 ChecklistItem(text: "Короткое значение — справа", detail: "вот так"),
                 ChecklistItem(text: "Длинное значение или команда", detail: "Ложится отдельной строкой под названием, как эта. Клик по ней копирует её целиком."),
+                ChecklistItem(
+                    text: "Подпункты",
+                    detail: "Несколько значений под одним названием. В правке: ⇥ в поле значения или кнопка «+» справа от пункта.",
+                    subitems: [SubItem(text: "вот второе значение"), SubItem(text: "а вот третье")]
+                ),
                 ChecklistItem(text: "Раздел", detail: "Заголовок группы пунктов, как «Из чего состоит пункт» выше. Не отмечается и не нумеруется."),
                 ChecklistItem(text: "Два вида листов", isSection: true),
                 ChecklistItem(text: "Чеклист", detail: "С квадратиками слева: отмечай пройденное. Этот лист — чеклист."),
@@ -122,6 +127,7 @@ final class Store {
                 ChecklistItem(text: "Перенос строки в пункте", detail: "⌥↩"),
                 ChecklistItem(text: "Удалить пустой пункт", detail: "⌫"),
                 ChecklistItem(text: "Из текста к значению и обратно", detail: "⇥ / ⇧⇥"),
+                ChecklistItem(text: "Ещё подпункт", detail: "⇥ в значении"),
                 ChecklistItem(text: "Переставить пункт", detail: "тащить за ≡"),
             ],
             isBuiltIn: true,
