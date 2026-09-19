@@ -23,13 +23,43 @@ Theme: light, dark, or match the system.
 
 ## Install
 
+**One command, nothing else needed:**
+
+```bash
+curl -fsSL -o /tmp/Tick.dmg https://github.com/white-currant/Tick/releases/latest/download/Tick.dmg \
+  && hdiutil attach -nobrowse -quiet -mountpoint /tmp/Tick-dmg /tmp/Tick.dmg \
+  && rm -rf /Applications/Tick.app && cp -R /tmp/Tick-dmg/Tick.app /Applications/ ; \
+hdiutil detach -quiet /tmp/Tick-dmg; rm -f /tmp/Tick.dmg
+```
+
+**With Homebrew:**
+
 ```bash
 brew tap white-currant/tap
 brew trust white-currant/tap
 brew install --cask tick
 ```
 
-Or grab the DMG by hand from the [Releases](https://github.com/white-currant/Tick/releases) page.
+**No Homebrew yet?** It is a separate program and macOS does not include it. Install it once
+(it asks for your Mac password and may install the Command Line Tools first):
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+At the end the installer prints "Next steps". Run those lines, otherwise `brew` will not be found.
+On Apple Silicon Macs they are:
+
+```bash
+echo >> ~/.zprofile
+echo 'eval "$(/opt/homebrew/bin/brew shellenv zsh)"' >> ~/.zprofile
+eval "$(/opt/homebrew/bin/brew shellenv zsh)"
+```
+
+(On Intel Macs the path is `/usr/local/bin/brew` — copy the exact lines the installer shows.)
+Then run the three Homebrew commands above.
+
+**Or by hand:** download `Tick.dmg` from the [Releases](https://github.com/white-currant/Tick/releases) page and drag Tick to Applications.
 
 Updates happen automatically via [Sparkle](https://sparkle-project.org), or
 manually from the "Check for Updates…" menu.
@@ -105,13 +135,43 @@ Skip the second line if you want to keep your checklists.
 
 ## Установка
 
+**Одной командой, больше ничего не нужно:**
+
+```bash
+curl -fsSL -o /tmp/Tick.dmg https://github.com/white-currant/Tick/releases/latest/download/Tick.dmg \
+  && hdiutil attach -nobrowse -quiet -mountpoint /tmp/Tick-dmg /tmp/Tick.dmg \
+  && rm -rf /Applications/Tick.app && cp -R /tmp/Tick-dmg/Tick.app /Applications/ ; \
+hdiutil detach -quiet /tmp/Tick-dmg; rm -f /tmp/Tick.dmg
+```
+
+**Через Homebrew:**
+
 ```bash
 brew tap white-currant/tap
 brew trust white-currant/tap
 brew install --cask tick
 ```
 
-Или скачать вручную — DMG со страницы [Releases](https://github.com/white-currant/Tick/releases).
+**Homebrew ещё нет?** Это отдельная программа, в macOS её нет. Ставится один раз
+(попросит пароль от Mac и, возможно, сначала поставит Command Line Tools):
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+В конце установщик покажет блок «Next steps». Выполни его строки, иначе `brew` не найдётся.
+На Mac с Apple Silicon это:
+
+```bash
+echo >> ~/.zprofile
+echo 'eval "$(/opt/homebrew/bin/brew shellenv zsh)"' >> ~/.zprofile
+eval "$(/opt/homebrew/bin/brew shellenv zsh)"
+```
+
+(На Intel-маках путь `/usr/local/bin/brew` — скопируй точные строки из вывода установщика.)
+Потом выполни три команды Homebrew выше.
+
+**Или вручную:** скачай `Tick.dmg` со страницы [Releases](https://github.com/white-currant/Tick/releases) и перетащи Tick в «Программы».
 
 Обновления — автоматически через [Sparkle](https://sparkle-project.org), либо
 вручную через меню «Проверить обновления…».
