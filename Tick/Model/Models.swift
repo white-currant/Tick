@@ -59,6 +59,11 @@ struct ChecklistItem: Identifiable, Codable, Hashable {
     /// Подпункты с текстом: пустые заготовки в правке не показываем и не копируем.
     var filledSubitems: [SubItem] { subitems.filter { !$0.text.isEmpty } }
 
+    /// Весь пункт для копирования: название и все значения, каждое с новой строки.
+    var wholeText: String {
+        ([text] + (detail.isEmpty ? [] : [detail]) + filledSubitems.map(\.text)).joined(separator: "\n")
+    }
+
     private enum CodingKeys: String, CodingKey { case id, text, detail, isDone, isSection, subitems }
 
     init(from decoder: Decoder) throws {

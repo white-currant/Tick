@@ -92,8 +92,8 @@ struct ChecklistReadView<Controls: View>: View {
     @State private var mouseMonitor = KeyMonitor()
     @State private var windowBox = WindowBox()
     @State private var copiedID: UUID?
-    /// Какое именно значение скопировано: подсвечивается отдельно от всей строки.
-    @State private var copiedChipID: UUID?
+    /// Какие именно значения скопированы: подсвечиваются отдельно от всей строки.
+    @State private var copiedChipIDs: Set<UUID> = []
     @State private var copiedResetTask: Task<Void, Never>?
 
     var body: some View {
@@ -137,7 +137,7 @@ struct ChecklistReadView<Controls: View>: View {
                                 numberWidth: numbering.width,
                                 kind: checklist.kind,
                                 copied: copiedID == item.id,
-                                copiedChipID: copiedID == item.id ? copiedChipID : nil
+                                copiedChipIDs: copiedID == item.id ? copiedChipIDs : []
                             )
                         }
                     }
@@ -219,25 +219,39 @@ struct ChecklistReadView<Controls: View>: View {
         }
     }
 
-    /// Клик по значению копирует его; по остальной строке — основное значение или текст.
+    /// Клик по значению копирует его. По названию и пустому месту: у пункта с подпунктами
+    /// весь пункт, у пункта с одним значением — это значение (или название, если его нет).
     private func copyRow(_ id: UUID, chipID: UUID?) {
         guard let item = checklist.items.first(where: { $0.id == id }) else { return }
+        let multi = !item.filledSubitems.isEmpty
+        let allChips = Set((item.detail.isEmpty ? [] : [item.id]) + item.filledSubitems.map(\.id))
         let picked = chipID.flatMap { chip in
             chip == item.id ? item.detail : item.subitems.first(where: { $0.id == chip })?.text
         }
-        copyToPasteboard(picked ?? (item.detail.isEmpty ? item.text : item.detail))
+        let text: String
+        let lit: Set<UUID>
+        if let picked, let chipID {
+            text = picked
+            lit = [chipID]
+        } else if multi {
+            text = item.wholeText
+            lit = allChips
+        } else {
+            text = item.detail.isEmpty ? item.text : item.detail
+            lit = []
+        }
+        copyToPasteboard(text)
         copiedResetTask?.cancel()
-        let multi = !item.filledSubitems.isEmpty
         withAnimation(.easeOut(duration: 0.12)) {
             copiedID = id
-            copiedChipID = chipID ?? (multi && !item.detail.isEmpty ? item.id : nil)
+            copiedChipIDs = lit
         }
         copiedResetTask = Task {
             try? await Task.sleep(for: .milliseconds(1100))
             guard !Task.isCancelled else { return }
             withAnimation(.easeOut(duration: 0.3)) {
                 copiedID = nil
-                copiedChipID = nil
+                copiedChipIDs = []
             }
         }
     }
@@ -280,8 +294,9 @@ private struct ReadItemRow: View {
     var numberWidth: CGFloat
     var kind: ListKind
     var copied: Bool
-    var copiedChipID: UUID?
+    var copiedChipIDs: Set<UUID> = []
     @State private var hovering = false
+    @State private var hoveredChipID: UUID?
 
     /// Короткий ответ идёт в строку через лидер, длинная команда — отдельной строкой.
     private var detailInline: Bool {
@@ -373,6 +388,9 @@ private struct ReadItemRow: View {
                 Button("Копировать значение") { copyToPasteboard(item.detail) }
                 Button("Копировать строку") { copyToPasteboard(item.text + " — " + item.detail) }
             }
+            if !item.filledSubitems.isEmpty {
+                Button("Копировать весь пункт") { copyToPasteboard(item.wholeText) }
+            }
             ForEach(item.filledSubitems) { sub in
                 Button("Копировать: \(sub.text.prefix(40))") { copyToPasteboard(sub.text) }
             }
@@ -389,14 +407,17 @@ private struct ReadItemRow: View {
 
     private var detailChip: some View { chip(item.detail) }
 
-    private func chip(_ text: String, highlighted: Bool = false) -> some View {
+    private func chip(_ text: String, highlighted: Bool = false, hovered: Bool = false) -> some View {
         Text(text)
             .font(Typo.code)
             .foregroundStyle(item.isDone ? Palette.inkMuted : Palette.ink)
             .textSelection(.enabled)
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
-            .background(highlighted ? Palette.amber.opacity(0.65) : Palette.code, in: RoundedRectangle(cornerRadius: 4))
+            .background(
+                highlighted ? Palette.amber.opacity(0.65) : hovered ? Palette.amber.opacity(0.28) : Palette.code,
+                in: RoundedRectangle(cornerRadius: 4)
+            )
             .fixedSize(horizontal: false, vertical: true)
     }
 
@@ -408,10 +429,23 @@ private struct ReadItemRow: View {
                 .font(Typo.number)
                 .foregroundStyle(Palette.inkMuted)
                 .frame(width: numberWidth, alignment: .trailing)
-            chip(text, highlighted: frameID != nil && frameID == copiedChipID)
+            chip(
+                text,
+                highlighted: frameID.map(copiedChipIDs.contains) ?? false,
+                hovered: frameID != nil && frameID == hoveredChipID
+            )
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .onHover { inside in
+            guard let frameID else { return }
+            if inside {
+                hoveredChipID = frameID
+            } else if hoveredChipID == frameID {
+                hoveredChipID = nil
+            }
+        }
         .background(
             GeometryReader { proxy in
                 Color.clear.preference(
