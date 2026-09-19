@@ -92,6 +92,8 @@ struct ChecklistReadView<Controls: View>: View {
     @State private var mouseMonitor = KeyMonitor()
     @State private var windowBox = WindowBox()
     @State private var copiedID: UUID?
+    /// Какое именно значение скопировано: подсвечивается отдельно от всей строки.
+    @State private var copiedChipID: UUID?
     @State private var copiedResetTask: Task<Void, Never>?
 
     var body: some View {
@@ -134,7 +136,8 @@ struct ChecklistReadView<Controls: View>: View {
                                 label: numbering.labels[item.id],
                                 numberWidth: numbering.width,
                                 kind: checklist.kind,
-                                copied: copiedID == item.id
+                                copied: copiedID == item.id,
+                                copiedChipID: copiedID == item.id ? copiedChipID : nil
                             )
                         }
                     }
@@ -224,11 +227,18 @@ struct ChecklistReadView<Controls: View>: View {
         }
         copyToPasteboard(picked ?? (item.detail.isEmpty ? item.text : item.detail))
         copiedResetTask?.cancel()
-        withAnimation(.easeOut(duration: 0.12)) { copiedID = id }
+        let multi = !item.filledSubitems.isEmpty
+        withAnimation(.easeOut(duration: 0.12)) {
+            copiedID = id
+            copiedChipID = chipID ?? (multi && !item.detail.isEmpty ? item.id : nil)
+        }
         copiedResetTask = Task {
             try? await Task.sleep(for: .milliseconds(1100))
             guard !Task.isCancelled else { return }
-            withAnimation(.easeOut(duration: 0.3)) { copiedID = nil }
+            withAnimation(.easeOut(duration: 0.3)) {
+                copiedID = nil
+                copiedChipID = nil
+            }
         }
     }
 
@@ -270,6 +280,7 @@ private struct ReadItemRow: View {
     var numberWidth: CGFloat
     var kind: ListKind
     var copied: Bool
+    var copiedChipID: UUID?
     @State private var hovering = false
 
     /// Короткий ответ идёт в строку через лидер, длинная команда — отдельной строкой.
@@ -378,14 +389,14 @@ private struct ReadItemRow: View {
 
     private var detailChip: some View { chip(item.detail) }
 
-    private func chip(_ text: String) -> some View {
+    private func chip(_ text: String, highlighted: Bool = false) -> some View {
         Text(text)
             .font(Typo.code)
             .foregroundStyle(item.isDone ? Palette.inkMuted : Palette.ink)
             .textSelection(.enabled)
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
-            .background(Palette.code, in: RoundedRectangle(cornerRadius: 4))
+            .background(highlighted ? Palette.amber.opacity(0.65) : Palette.code, in: RoundedRectangle(cornerRadius: 4))
             .fixedSize(horizontal: false, vertical: true)
     }
 
@@ -397,7 +408,7 @@ private struct ReadItemRow: View {
                 .font(Typo.number)
                 .foregroundStyle(Palette.inkMuted)
                 .frame(width: numberWidth, alignment: .trailing)
-            chip(text)
+            chip(text, highlighted: frameID != nil && frameID == copiedChipID)
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
